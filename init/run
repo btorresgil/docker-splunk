@@ -1,0 +1,34 @@
+#!/bin/bash
+
+_SPLUNK_PW=${SPLUNK_PW:-changeme}
+
+# 'docker stop' signal handeling.
+trap '[ -e "/opt/splunk/var/run/splunk/splunkweb.pid" ] && /opt/splunk/bin/splunk stop; exit 0' SIGTERM
+
+# Using splunk --nodaemon isnt working correctly and will never start the web-service..
+/opt/splunk/bin/splunk start 
+
+# Add search peers (indexers) on the search head
+# (splunk must be running for this)
+if [ -n "$SPLUNK_SEARCH_PEERS" ]; then
+  search_peers_string=""
+  for node in ${SPLUNK_SEARCH_PEERS}; do
+    /opt/splunk/bin/splunk add search-server -host ${node}:8089 -auth admin:${_SPLUNK_PW} -remoteUsername admin -remotePassword ${_SPLUNK_PW}
+    search_peers_string="$search_peers_string$node:9997,"
+  done
+  echo "# Turn off indexing on the search head" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "[indexAndForward]" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "index = false" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "[tcpout]" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "defaultGroup = my_search_peers " >> /opt/splunk/etc/system/local/outputs.conf
+  echo "forwardedindex.filter.disable = true  " >> /opt/splunk/etc/system/local/outputs.conf
+  echo "indexAndForward = false " >> /opt/splunk/etc/system/local/outputs.conf
+  echo "" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "[tcpout:my_search_peers]" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "server=${search_peers_string%?}" >> /opt/splunk/etc/system/local/outputs.conf
+  echo "autoLB = true" >> /opt/splunk/etc/system/local/outputs.conf
+fi
+
+# Watch the logs to keep the container running
+tail -f /opt/splunk/var/log/splunk/splunkd.log

@@ -1,0 +1,55 @@
+#!/bin/bash
+
+function die {
+  echo "ERROR: ${1}"
+  exit 1
+}
+
+function check_depending_env {
+  if [ -n "${DEPENDING_ENVIRONMENT_VARS}" ]; then
+    MISSING_ENVIRONMENT_VARS=()
+    echo -n "* Checking depending environment variables "
+    for e in ${DEPENDING_ENVIRONMENT_VARS}; do
+      if [ ! -v "${e}" ]; then
+        MISSING_ENVIRONMENT_VARS+=("${e}")
+      fi
+    done
+    if [ ${#MISSING_ENVIRONMENT_VARS[@]} -gt 0 ]; then
+      echo "[missing variables]"
+      for missing in "${MISSING_ENVIRONMENT_VARS[@]}"; do
+        echo " * ${missing}"
+      done
+      echo
+      die "Missing environment variables"
+    fi
+    echo -n "[done]"
+    echo
+  fi
+}
+
+[[ ${SPLUNK_RECONFIGURE} ]] && rm -f /init/setup_done
+
+if [ ! -e /init/setup_done ]; then
+  if [ -e /init/setup ]; then
+    /bin/sh -x /init/setup
+    touch /init/setup_done
+  fi
+fi
+
+case ${1} in
+  run)
+    check_depending_env
+    if [ -e /init/run_setup ]; then
+      /bin/sh -x /init/setup
+    fi
+    if [ -e /init/run ]; then
+      # Use exec so we replace our current process so signals can get through
+      exec /bin/sh /init/run
+    else
+      /bin/bash
+    fi
+    ;;
+  *)
+    exec $*
+    ;;
+esac
