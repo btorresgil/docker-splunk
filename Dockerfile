@@ -2,7 +2,7 @@ FROM centos:centos7
 
 MAINTAINER Brian Torres-Gil <btorresgil@dralth.com>
 
-ENV REFRESHED_AT 2015-10-02
+ENV REFRESHED_AT 2015-10-08
 
 # Not needed for Splunk, maybe for other software later
 #RUN yum localinstall -y http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm && \
@@ -24,7 +24,21 @@ RUN rm -f /splunk.rpm
 # Sets Splunk settings
 COPY init/ /init/
 
+# Move the existing configuration out so host-mapped volumes
+# don't overwrite the files. Configuration will be copied back
+# in during container setup on first run.
+RUN mkdir /local /local/system /local/users /local/apps /local/log
+RUN cp -R /opt/splunk/etc/system/local/* /local/system
+RUN cp -R /opt/splunk/etc/apps/* /local/apps
+
+# Index directory must be a volume for Splunk to work
 VOLUME /opt/splunk/var/lib/splunk
+
+# These directories contain the Splunk configuration
+# Based on http://docs.splunk.com/Documentation/Splunk/6.2.0/Admin/Configurationfiledirectories
+VOLUME /opt/splunk/etc/system/local
+VOLUME /opt/splunk/etc/users
+VOLUME /opt/splunk/etc/apps
 
 EXPOSE 8000 8089 9997 514/udp
 

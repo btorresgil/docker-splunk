@@ -4,44 +4,53 @@ _SPLUNK_PW=${SPLUNK_PW:-changeme}
 
 cd /opt/splunk
 
-touch etc/.ui_login # Disable the "first time signing in" message
-./bin/splunk edit user admin -password ${_SPLUNK_PW} -auth admin:changeme --accept-license # Accept lic at first command
-./bin/splunk enable listen 9997 -auth admin:${_SPLUNK_PW}
+if [[ ! ${SPLUNK_EXISTING_CONFIG} ]]; then
+  touch etc/.ui_login # Disable the "first time signing in" message
+  ./bin/splunk edit user admin -password ${_SPLUNK_PW} -auth admin:changeme --accept-license # Accept lic at first command
+  ./bin/splunk enable listen 9997 -auth admin:${_SPLUNK_PW}
 
-[[ ${SPLUNK_ENTERPRISE} ]] || ./bin/splunk edit licenser-groups Free -is_active 1
+  [[ ${SPLUNK_ENTERPRISE} ]] || ./bin/splunk edit licenser-groups Free -is_active 1
 
-echo -e "[default]\n[settings]\n\n" >> /opt/splunk/etc/system/local/web.conf
+  echo -e "[default]\n[settings]\n\n" >> /opt/splunk/etc/system/local/web.conf
 
-[[ ${SPLUNK_ENABLE_VERSION_CHECK} ]] || echo "updateCheckerBaseURL = 0" >> /opt/splunk/etc/system/local/web.conf
-[[ ${SPLUNK_WEB_PATH} ]] && echo "root_endpoint = /${SPLUNK_WEB_PATH}" >> /opt/splunk/etc/system/local/web.conf
+  [[ ${SPLUNK_ENABLE_VERSION_CHECK} ]] || echo "updateCheckerBaseURL = 0" >> /opt/splunk/etc/system/local/web.conf
+  [[ ${SPLUNK_WEB_PATH} ]] && echo "root_endpoint = /${SPLUNK_WEB_PATH}" >> /opt/splunk/etc/system/local/web.conf
 
-if [[ ${SPLUNK_SSO} ]]; then
-  # Get docker proxy ip
-  _PROXY_IP=$(getent hosts proxy | cut -d' ' -f1)
-  [[ ${_PROXY_IP} ]] || (echo "You need to link a proxy, or disable SSO"; exit 1)
-  echo -e "remoteUser = ${SPLUNK_SSO_REMOTEUSER}\ntrustedIP = ${_PROXY_IP}" >> /opt/splunk/etc/system/local/web.conf
+  if [[ ${SPLUNK_SSO} ]]; then
+    # Get docker proxy ip
+    _PROXY_IP=$(getent hosts proxy | cut -d' ' -f1)
+    [[ ${_PROXY_IP} ]] || (echo "You need to link a proxy, or disable SSO"; exit 1)
+    echo -e "remoteUser = ${SPLUNK_SSO_REMOTEUSER}\ntrustedIP = ${_PROXY_IP}" >> /opt/splunk/etc/system/local/web.conf
 
-  sed "/\[general\]/a trustedIP = 127.0.0.1" -i /opt/splunk/etc/system/local/server.conf
-  ./bin/splunk add user "${SPLUNK_SSO_ADMIN}" -role admin -password password
+    sed "/\[general\]/a trustedIP = 127.0.0.1" -i /opt/splunk/etc/system/local/server.conf
+    ./bin/splunk add user "${SPLUNK_SSO_ADMIN}" -role admin -password password
+  fi
+
+  if [[ ${SPLUNK_SSL} ]]; then
+    echo "enableSplunkWebSSL = True" >> /opt/splunk/etc/system/local/web.conf
+  fi
+
+  [[ ${SPLUNK_SERVERNAME} ]] && sed "s/\(serverName = \).*/\1${SPLUNK_SERVERNAME}/" -i /opt/splunk/etc/system/local/server.conf
+  [[ ${SPLUNK_SERVERNAME} ]] && sed "s/\(host = \).*/\1${SPLUNK_SERVERNAME}/" -i /opt/splunk/etc/system/local/inputs.conf
+
+  [[ ${SPLUNK_SESSION_TIMEOUT} ]] && sed "/\[general\]/a sessionTimeout = ${SPLUNK_SESSION_TIMEOUT}" -i /opt/splunk/etc/system/local/server.conf
+
+  [[ ${SPLUNK_DEPLOYMENT_SERVER} ]] && echo -e "[deployment-client]\nclientName = ${SPLUNK_SERVERNAME}\n\n[target-broker:deploymentServer]\ntargetUri = ${SPLUNK_DEPLOYMENT_SERVER}:8089" >> /opt/splunk/etc/system/local/deploymentclient.conf
+
+  if [ -e /data ]; then
+    ./bin/splunk add monitor /data
+  fi
+
+  if [ -e /license.lic ]; then
+    ./bin/splunk add licenses /license.lic 
+  fi
+
+  # Copy saved contents of Splunk configuration directories back to the Splunk directory tree.
+  # Don't overwrite files in case there were config changes made to a previous container
+  # using the same volumes.
+  cp -Rn /local/system/* /opt/splunk/etc/system/local/
+  cp -Rn /local/apps/* /opt/splunk/etc/apps/
 fi
-
-if [[ ${SPLUNK_SSL} ]]; then
-  echo "enableSplunkWebSSL = True" >> /opt/splunk/etc/system/local/web.conf
-fi
-
-[[ ${SPLUNK_SERVERNAME} ]] && sed "s/\(serverName = \).*/\1${SPLUNK_SERVERNAME}/" -i /opt/splunk/etc/system/local/server.conf
-[[ ${SPLUNK_SERVERNAME} ]] && sed "s/\(host = \).*/\1${SPLUNK_SERVERNAME}/" -i /opt/splunk/etc/system/local/inputs.conf
-
-[[ ${SPLUNK_SESSION_TIMEOUT} ]] && sed "/\[general\]/a sessionTimeout = ${SPLUNK_SESSION_TIMEOUT}" -i /opt/splunk/etc/system/local/server.conf
-
-[[ ${SPLUNK_DEPLOYMENT_SERVER} ]] && echo -e "[deployment-client]\nclientName = ${SPLUNK_SERVERNAME}\n\n[target-broker:deploymentServer]\ntargetUri = ${SPLUNK_DEPLOYMENT_SERVER}:8089" >> /opt/splunk/etc/system/local/deploymentclient.conf
-
-if [ -e /data ]; then
-  ./bin/splunk add monitor /data
-fi
-
-if [ -e /license.lic ]; then
-  ./bin/splunk add licenses /license.lic 
-fi
+rm -rf /local
 
 chown -R splunk: /opt/splunk
