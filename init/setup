@@ -5,6 +5,14 @@ _SPLUNK_PW=${SPLUNK_PW:-changeme}
 cd /opt/splunk
 
 if [[ ! ${SPLUNK_EXISTING_CONFIG} ]]; then
+
+  # Copy saved contents of Splunk configuration directories back to the Splunk directory tree.
+  # Don't overwrite files in case there were config changes made to a previous container
+  # using the same volumes.
+  cp -Rn /local/system/* /opt/splunk/etc/system/local/
+  cp -Rn /local/apps/* /opt/splunk/etc/apps/
+  cp -Rn /local/auth/* /opt/splunk/etc/auth/
+
   touch etc/.ui_login # Disable the "first time signing in" message
   ./bin/splunk edit user admin -password ${_SPLUNK_PW} -auth admin:changeme --accept-license # Accept lic at first command
   ./bin/splunk enable listen 9997 -auth admin:${_SPLUNK_PW}
@@ -44,12 +52,6 @@ if [[ ! ${SPLUNK_EXISTING_CONFIG} ]]; then
   if [ -e /license.lic ]; then
     ./bin/splunk add licenses /license.lic 
   fi
-
-  # Copy saved contents of Splunk configuration directories back to the Splunk directory tree.
-  # Don't overwrite files in case there were config changes made to a previous container
-  # using the same volumes.
-  cp -Rn /local/system/* /opt/splunk/etc/system/local/
-  cp -Rn /local/apps/* /opt/splunk/etc/apps/
 fi
 rm -rf /local
 
