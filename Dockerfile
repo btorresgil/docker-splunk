@@ -27,9 +27,10 @@ COPY init/ /init/
 # Move the existing configuration out so host-mapped volumes
 # don't overwrite the files. Configuration will be copied back
 # in during container setup on first run.
-RUN mkdir /local /local/system /local/users /local/apps /local/log
+RUN mkdir /local /local/system /local/apps /local/auth
 RUN cp -R /opt/splunk/etc/system/local/* /local/system
 RUN cp -R /opt/splunk/etc/apps/* /local/apps
+RUN cp -R /opt/splunk/etc/auth/* /local/auth
 
 # Index directory must be a volume for Splunk to work
 VOLUME /opt/splunk/var/lib/splunk
@@ -39,6 +40,7 @@ VOLUME /opt/splunk/var/lib/splunk
 VOLUME /opt/splunk/etc/system/local
 VOLUME /opt/splunk/etc/users
 VOLUME /opt/splunk/etc/apps
+VOLUME /opt/splunk/etc/auth
 
 EXPOSE 8000 8089 9997 514/udp
 
