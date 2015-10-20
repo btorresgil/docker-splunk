@@ -10,6 +10,7 @@ including Searchheads and Indexers.
 * `/license.lic`: Splunk Enterprise license
 
 # Environment variables available
+* `SPLUNK_EXISTING_CONFIG`: Set to `true` if you're mounting host volumes that contain existing configuration (ie. you are upgrading the Splunk container)
 * `SPLUNK_SERVERNAME`: If set, it will become the name of the Splunk instance, and the name of the host for the default input.
 * `SPLUNK_ENTERPRISE`: Set to `true` if you want the enterprise 30days trial (default is the free 500MiB/day license). Should become normal enterprise if /license.lic is mounted (see volumes)
 * `SPLUNK_PW`: Set to the password you want to use if you are using the enterprise trial. Default to `changeme`
