@@ -6,7 +6,7 @@ _SPLUNK_PW=${SPLUNK_PW:-changeme}
 trap '[ -e "/opt/splunk/var/run/splunk/splunkweb.pid" ] && /opt/splunk/bin/splunk stop; exit 0' SIGTERM
 
 # Using splunk --nodaemon isnt working correctly and will never start the web-service..
-/opt/splunk/bin/splunk start 
+/opt/splunk/bin/splunk start --answer-yes --no-prompt --accept-license
 
 # Add search peers (indexers) on the search head
 # (splunk must be running for this)
