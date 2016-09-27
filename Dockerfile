@@ -2,7 +2,7 @@ FROM centos:centos7
 
 MAINTAINER Brian Torres-Gil <btorresgil@dralth.com>
 
-ENV REFRESHED_AT 2015-10-08
+ENV REFRESHED_AT 2016-09-26
 
 # Not needed for Splunk, maybe for other software later
 #RUN yum localinstall -y http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm && \
@@ -10,10 +10,10 @@ ENV REFRESHED_AT 2015-10-08
 
 # Use wget to grab a version of Splunk
 RUN yum install -y wget
-RUN wget -O /splunk.rpm "http://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=6.3.2&product=splunk&filename=splunk-6.3.2-aaff59bb082c-linux-2.6-x86_64.rpm&wget=true"
+RUN wget -O /splunk.rpm "https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=6.5.0&product=splunk&filename=splunk-6.5.0-59c8927def0f-linux-2.6-x86_64.rpm&wget=true"
 
 # Build everything locally.. (its faster)
-#COPY splunk-6.3.2-aaff59bb082c-linux-2.6-x86_64.rpm /splunk.rpm
+#COPY splunk-6.5.0-59c8927def0f-linux-2.6-x86_64.rpm /splunk.rpm
 
 RUN yum localinstall -y /splunk.rpm 
 RUN rm -f /splunk.rpm 
